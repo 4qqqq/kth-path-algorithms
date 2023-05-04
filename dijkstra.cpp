@@ -2,51 +2,10 @@
 
 using namespace std;
 
-// функция используется для восстановления ответа
-void dfs(
-    int v, 
-    unsigned long long now_distance,
-    vector<vector<pair<int, unsigned long long>>> &g,
-    vector<pair<unsigned long long, vector<int>>> &all_pathes,
-    size_t k,
-    vector<multiset<unsigned long long>> &distances, 
-    unsigned long long true_distance,
-    vector<int> &now_path
-)
-{
-    if(all_pathes.size() == k)
-        return;
+// функция возвращает пару {true, длина k-го кратчайшего пути}
+// В случае, если number_of_paths путей не существует, возвращается {false, 0}
 
-    now_path.push_back(v);
-
-    if(v == 0 && now_distance == 0){
-        all_pathes.push_back({true_distance, now_path});
-        reverse(all_pathes.back().second.begin(), all_pathes.back().second.end());
-        return;
-    }
-
-    for(auto [u, w] : g[v]){
-        if(distances[u].count(now_distance - w)){
-            dfs(
-                u,
-                now_distance - w,
-                g,
-                all_pathes,
-                k,
-                distances,
-                true_distance,
-                now_path
-            );
-        }
-    }
-}
-
-// функция возвращает список из number_of_paths пар вида {distance, path}, где 
-// distance -- длина минимального пути от 0 до n - 1,
-// path -- сам путь
-// В случае, если number_of_paths путей не существует, возвращается список меньшего размера.
-
-vector<pair<unsigned long long, vector<int>>> modified_dijksrta(vector<vector<pair<int, unsigned long long>>> &g, size_t number_of_paths){
+pair<bool, unsigned long long> modified_dijksrta(vector<vector<pair<int, unsigned long long>>> &g, size_t number_of_paths){
     size_t n = g.size();
 
     multiset<pair<unsigned long long, int>> st; // С помощью сета поддерижваем необработанные вершины ({distance, vertex})
@@ -81,37 +40,7 @@ vector<pair<unsigned long long, vector<int>>> modified_dijksrta(vector<vector<pa
         }
     }
 
-    // для восстанавление ответа нужно будет построить реверсированный граф
-    vector<vector<pair<int, unsigned long long>>> rg(n);
-
-    for(int v = 0; v < n; v++)
-        for(auto [u, w] : g[v])
-            rg[u].push_back({v, w});
-
-    // восстановление ответа
-    vector<pair<unsigned long long, vector<int>>> result = {};
-
-    // Для каждой длины будем перебирать все пути (но не больше, чем нужно), которые есть с выбранной длинной рекурсивно
-    // Кроме того, будем считать, что в графе нет циклов нулевой длины, через который пройдет один из путей, 
-    // потому что в таком случае рекурсия может работать бесконечно;
-    // Впрочем, такой случай можно обработать. Если мы наткнулись на цикл нулевой длины, то это значит, что существует бесконечное количество
-    // Путей одинаковой длины (мы можем сколько угодно раз пройти по циклу)
-
-    // Стоит отметить, что восстановление пути может повлиять на асимптотику решения. Дело в том, что k-й непростой путь может иметь
-    // порядка nk ребер (например, если граф является циклом). Это значит, что суммарная длина всех путей может быть порядка k^2 * n.
-    // Тем не менее, при случайных графах все работает хорошо, поскольку при не специально выбранных графах количество ребер
-    // в пути будет вряд ли больше m.
-
-    for(auto [i, it, last] = tuple{0, distances[n - 1].begin(), 0ull}; it != distances[n - 1].end(); it++, i++){
-        auto d = *it;
-
-        if(d != last)
-            dfs(n - 1, d, rg, result, number_of_paths, distances, d, *(new vector<int>()));
-
-        last = d;
-    }
-
-    return result;
+    return (distances[n - 1].size() == number_of_paths ? make_pair(true, *distances[n - 1].rbegin()) : make_pair(false, 0ull));
 }
 
 signed main(){
