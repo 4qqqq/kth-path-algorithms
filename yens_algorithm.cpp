@@ -105,10 +105,6 @@ vector<pair<unsigned long long, vector<int>>> yens_algorithm(const vector<vector
             if(distance != another.distance) return distance < another.distance;
             return order < another.order;
         }
-
-        bool operator == (const Path &another){
-            return distance == another.distance && order == another.order;
-        }
     };
 
     size_t n = g_vector.size();
