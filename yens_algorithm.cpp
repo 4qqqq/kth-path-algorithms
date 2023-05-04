@@ -101,7 +101,7 @@ vector<pair<unsigned long long, vector<int>>> yens_algorithm(const vector<vector
             return {distance, order};
         }
 
-        bool operator < (const Path &another){
+        bool operator < (const Path &another) const {
             if(distance != another.distance) return distance < another.distance;
             return order < another.order;
         }
@@ -113,7 +113,7 @@ vector<pair<unsigned long long, vector<int>>> yens_algorithm(const vector<vector
 
     size_t n = g_vector.size();
 
-    vector<Path> candidates;
+    set<Path> candidates;
     vector<Path> chosen = {Path(default_dijksrta(g_vector, 0, *(new unordered_set<int>())))};
 
     unordered_map<pair<int, int>, unsigned long long> g_matrix;
@@ -148,7 +148,7 @@ vector<pair<unsigned long long, vector<int>>> yens_algorithm(const vector<vector
             if(pp.first != INF64){
                 vector<int> real_order = prefix;
                 real_order.insert(real_order.end(), pp.second.begin(), pp.second.end());
-                candidates.push_back(Path({added_distance + pp.first, real_order}, deleted_edges));
+                candidates.insert(Path({added_distance + pp.first, real_order}, deleted_edges));
             }
 
             deleted_edges.erase({{v, u}, w});
@@ -157,14 +157,11 @@ vector<pair<unsigned long long, vector<int>>> yens_algorithm(const vector<vector
             prefix.push_back(v);
         }
 
-        sort(candidates.begin(), candidates.end());
-        candidates.resize(unique(candidates.begin(), candidates.end()) - candidates.begin());
-
         while(candidates.size() > number_of_paths)
-            candidates.pop_back();
+            candidates.erase(candidates.find(*candidates.rbegin()));
 
         if(candidates.size()){
-            chosen.push_back(candidates[0]);
+            chosen.push_back(*candidates.begin());
             candidates.erase(candidates.begin());
         }else{
             break;
