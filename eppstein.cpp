@@ -237,6 +237,6 @@ pair<bool, unsigned long long> eppstein_algorithm(const vector<vector<pair<int, 
     return (q.empty() ? make_pair(false, 0ull) : make_pair(true, q.top().first));
 }
 
-signed main() {
+signed main(){
 
 }
