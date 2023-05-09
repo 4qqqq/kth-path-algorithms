@@ -50,7 +50,7 @@ ____
 
 Программа является реализацией модифицированного алгоритма Дейкстры в виде функции 
 ```c++ 
-vector<unsigned long long>modified_dijksrta
+vector<unsigned long long> modified_dijksrta
 (
     const vector<vector<pair<int, unsigned long long>>> &g_vector, 
     size_t number_of_paths
