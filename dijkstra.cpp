@@ -5,7 +5,7 @@ using namespace std;
 // функция возвращает пару {true, длина k-го кратчайшего пути}
 // В случае, если number_of_paths путей не существует, возвращается {false, 0}
 
-pair<bool, unsigned long long> modified_dijksrta(vector<vector<pair<int, unsigned long long>>> &g, size_t number_of_paths){
+vector<unsigned long long> modified_dijksrta(vector<vector<pair<int, unsigned long long>>> &g, size_t number_of_paths){
     size_t n = g.size();
 
     multiset<pair<unsigned long long, int>> st; // С помощью сета поддерижваем необработанные вершины ({distance, vertex})
@@ -40,7 +40,7 @@ pair<bool, unsigned long long> modified_dijksrta(vector<vector<pair<int, unsigne
         }
     }
 
-    return (distances[n - 1].size() == number_of_paths ? make_pair(true, *distances[n - 1].rbegin()) : make_pair(false, 0ull));
+    return vector<unsigned long long>(distances[n - 1].begin(), distances[n - 1].end());
 }
 
 signed main(){

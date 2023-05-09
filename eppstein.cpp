@@ -6,23 +6,25 @@ const unsigned long long INF64 = 6e18;
 
 struct Node{
     int dist = 0; // нужно для поддержания работы левосторонней кучи
-    int& dist_method(){ return this ? this->dist : *(new int(0)); }
 
-    Node* merge(Node* y){
-        Node* x = this->copy();
-        if(x == 0) return y;
-        if(y == 0) return x;
+    int& dist_method(Node* v){ return v ? v->dist : *(new int(0)); }
+
+    Node* merge(Node* xx, Node* y){
+        if(xx == 0) return y;
+        if(y == 0) return xx;
+
+        Node* x = copy(xx);
 
         if(y->sidetrack < x->sidetrack)
             swap(x, y);
 
-        x->r.first = x->r.first->merge(y);
+        x->r.first = merge(x->r.first, y);
         x->r.second = (x->r.first ? x->r.first->sidetrack - x->sidetrack : 0);
 
-        if(x->r.first->dist_method() > x->l.first->dist_method())
+        if(dist_method(x->r.first) > dist_method(x->l.first))
             swap(x->l, x->r);
 
-        x->dist_method() = x->r.first->dist_method() + 1;
+        dist_method(x) = dist_method(x->r.first) + 1;
 
         return x;
     }
@@ -38,24 +40,16 @@ struct Node{
     Node(){}
     Node(int id, int v, unsigned long long sidetrack) : id(id), v(v), sidetrack(sidetrack) {}
 
-    Node* insert(Node* v){
-        return this->merge(v);
-    }
-
-    Node* extract_min(){
-        return this->l.first->merge(this->r.first);
-    }
-
-    Node* copy(){
-        if(!this) return 0;
+    Node* copy(Node *a){
+        if(!a) return 0;
 
         Node* res = new Node();
-        res->id = id;
-        res->v = v;
-        res->sidetrack = sidetrack;
-        res->l = l;
-        res->r = r;
-        res->dist = dist;
+        res->id = a->id;
+        res->v = a->v;
+        res->sidetrack = a->sidetrack;
+        res->l = a->l;
+        res->r = a->r;
+        res->dist = a->dist;
         return res;
     }
 };
@@ -64,12 +58,12 @@ class cmp{
 public:
     bool operator() (const Node* a, const Node* b) const {
         if(a->sidetrack != b->sidetrack) return a->sidetrack < b->sidetrack;
-        return a->id < b->id;
+        return a->id > b->id;
     }
 
     bool operator() (const pair<unsigned long long, Node*> &a, const pair<unsigned long long, Node*> &b) const {
-        if(a.first != b.first) return a.first < b.first;
-        return a.second->id < b.second->id;
+        if(a.first != b.first) return a.first > b.first;
+        return a.second->id > b.second->id;
     }
 };
 
@@ -105,20 +99,22 @@ vector<unsigned long long> default_dijksrta(
     return distance;
 }
 
-void dfs(int u, vector<vector<pair<int, unsigned long long>>> &g, vector<int> &p, vector<Node*> &adj, int &sz){
-    if(adj[u])
+void dfs(int u, vector<vector<pair<int, unsigned long long>>> &g, vector<int> &p, vector<Node*> &adj, int &sz, vector<char> &was){
+    if(was[u])
         return;
 
+    was[u] = true;
+
     if(p[u] != -1){
-        dfs(p[u], g, p, adj, sz);
-        adj[u] = adj[p[u]]->copy();
+        dfs(p[u], g, p, adj, sz, was);            
+        adj[u] = Node().copy(adj[p[u]]);
     }
 
     for(auto [v, w] : g[u])
-        adj[u] = adj[u]->merge(new Node(sz++, v, w));
+        adj[u] = Node().merge(adj[u], new Node(sz++, v, w));
 }
 
-pair<bool, unsigned long long> eppstein_algorithm(const vector<vector<pair<int, unsigned long long>>> &pre_g_vector, size_t k){
+vector<unsigned long long> eppstein_algorithm(const vector<vector<pair<int, unsigned long long>>> &pre_g_vector, size_t k){
     auto g_vector = pre_g_vector;
     auto n = g_vector.size();
     vector<vector<pair<int, unsigned long long>>> rg(n);
@@ -130,16 +126,19 @@ pair<bool, unsigned long long> eppstein_algorithm(const vector<vector<pair<int, 
     auto d = default_dijksrta(rg, n - 1);
 
     if(d[0] == INF64)
-        return {false, 0ull};
+        return {};
 
     // очистим граф от вершин, из которых не достижима n - 1
     {
         map<int, int> mp;
         int sz = 0;
+        vector<unsigned long long> new_d = {};
 
         for(int v = 0; v < n; v++)
-            if(d[v] != INF64)
+            if(d[v] != INF64){
                 mp[v] = sz++;
+                new_d.push_back(d[v]);
+            }
 
         vector<vector<pair<int, unsigned  long long>>> new_g_vector(sz);
 
@@ -155,24 +154,31 @@ pair<bool, unsigned long long> eppstein_algorithm(const vector<vector<pair<int, 
 
         g_vector = new_g_vector;
         n = sz;
+        d = new_d;
     }
 
     if(k == 1)
-        return {true, d[0]};
+        return {d[0]};
 
     vector<pair<pair<int, int>, unsigned long long>> edges;
     vector<int> p(n, -1);
 
     // очистим список ребер от nxt[u]
     {
-        vector<pair<pair<int, int>, unsigned long long>> edges_with_nxt;
+        vector<pair<pair<int, int>, pair<unsigned long long, unsigned long long>>> edges_with_nxt;
 
         for(int v = 0; v < n; v++)
             for(auto [u, w] : g_vector[v])
-                edges_with_nxt.push_back({{v, u}, d[u] - d[v] + w});
+                edges_with_nxt.push_back({{v, u}, {d[u] - d[v] + w, w}});
 
         sort(edges_with_nxt.begin(), edges_with_nxt.end(), [](auto& a, auto& b){
-            if(a.second != b.second) return a.second < b.second;
+            if(a.second != b.second){
+                if(a.second.first != b.second.first)
+                    return a.second.first < b.second.first;
+
+                return a.second.second > b.second.second;
+            }
+
             return a.first < b.first;
         });
 
@@ -180,7 +186,7 @@ pair<bool, unsigned long long> eppstein_algorithm(const vector<vector<pair<int, 
 
         for(auto e : edges_with_nxt){
             if(e.first.first == n - 1 || was.count(e.first.first)){
-                edges.push_back(e);
+                edges.push_back({e.first, e.second.first});
             }else{
                 was.insert(e.first.first);
                 p[e.first.first] = e.first.second;
@@ -200,16 +206,17 @@ pair<bool, unsigned long long> eppstein_algorithm(const vector<vector<pair<int, 
 
     vector<Node*> adj(n);
     int sz_adj = 0;
+    vector<char> was(n);
 
     for(int v = 0; v < n; v++)
-        if(!adj[v])
-            dfs(v, g, p, adj, sz_adj);
+        if(!was[v])
+            dfs(v, g, p, adj, sz_adj, was);
 
     priority_queue<pair<unsigned long long, Node*>, vector<pair<unsigned long long, Node*>>, cmp> q;
+    vector<unsigned long long> ans = {d[0]};
 
-    for(int u = 0; u < n; u++)
-        if(adj[u])
-            q.push({d[u] + adj[u]->sidetrack, adj[u]});
+    if(adj[0])
+        q.push({d[0] + adj[0]->sidetrack, adj[0]});
 
     while(k-- > 2){
         if(q.empty())
@@ -218,6 +225,7 @@ pair<bool, unsigned long long> eppstein_algorithm(const vector<vector<pair<int, 
         unsigned long long l;
         Node *vertex;
         tie(l, vertex) = q.top();
+        ans.push_back(l);
         q.pop();
 
         if(vertex->l.first){
@@ -234,7 +242,11 @@ pair<bool, unsigned long long> eppstein_algorithm(const vector<vector<pair<int, 
             q.push({l + adj[v]->sidetrack, adj[v]});
     }
 
-    return (q.empty() ? make_pair(false, 0ull) : make_pair(true, q.top().first));
+    if(!q.empty()){
+        ans.push_back(q.top().first);
+    }
+
+    return ans;
 }
 
 signed main(){
