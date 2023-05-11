@@ -1,13 +1,28 @@
+#pragma comment(linker, "/STACK:268435456");
 #include <bits/stdc++.h>
 
 using namespace std;
 
 const unsigned long long INF64 = 6e18;
 
+set<void*> to_del;
+
 struct Node{
     int dist = 0; // нужно для поддержания работы левосторонней кучи
 
-    int& dist_method(Node* v){ return v ? v->dist : *(new int(0)); }
+    pair<Node*, unsigned long long> l = {(Node*)(nullptr), 0ull},
+                                    r = {(Node*)(nullptr), 0ull};
+
+    int id = 0, // id вершины
+        v = 0; // существует ребро (x, v, w) [x \in {u, p[u], p[p[u]], ..., t}]
+
+    unsigned long long sidetrack = 0; // key
+
+    Node(){ to_del.insert((void*)this); }
+    Node(int id, int v, unsigned long long sidetrack) : id(id), v(v), sidetrack(sidetrack) { to_del.insert((void*)this); }
+    ~Node(){ to_del.erase((void*)this); }
+
+    int dist_method(Node* v){ return v ? v->dist : 0; }
 
     Node* merge(Node* xx, Node* y){
         if(xx == 0) return y;
@@ -24,21 +39,10 @@ struct Node{
         if(dist_method(x->r.first) > dist_method(x->l.first))
             swap(x->l, x->r);
 
-        dist_method(x) = dist_method(x->r.first) + 1;
+        x->dist = dist_method(x->r.first) + 1;
 
         return x;
     }
-
-    pair<Node*, unsigned long long> l = {(Node*)(nullptr), 0ull},
-                                    r = {(Node*)(nullptr), 0ull};
-
-    int id = 0, // id вершины
-        v = 0; // существует ребро (x, v, w) [x \in {u, p[u], p[p[u]], ..., t}]
-
-    unsigned long long sidetrack = 0; // key
-
-    Node(){}
-    Node(int id, int v, unsigned long long sidetrack) : id(id), v(v), sidetrack(sidetrack) {}
 
     Node* copy(Node *a){
         if(!a) return 0;
@@ -244,6 +248,14 @@ vector<unsigned long long> eppstein_algorithm(const vector<vector<pair<int, unsi
 
     if(!q.empty()){
         ans.push_back(q.top().first);
+    }
+
+    vector<void*> to_del_vector = vector<void*>(to_del.begin(), to_del.end());
+
+    for(void* it : to_del_vector){
+        if(!it) continue;
+        Node* v = reinterpret_cast<Node*>(it);
+        delete v;
     }
 
     return ans;
